@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source .venv/bin/activate
+uvicorn main:app --reload
+
+#chmod +x run.sh ,give permission
