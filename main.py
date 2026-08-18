@@ -54,12 +54,12 @@ async def get_vehicles(
     lng: float,
     radius: float = 2.0
 ):
-    api_key = os.getenv("API_KEY")
+    RT_api_key = os.getenv("RT_API_KEY")
 
-    if not api_key:
-        return {"error": "API_KEY is not configured"}
+    if not RT_api_key:
+        return {"error": "RT_API_KEY is not configured"}
 
-    url = f"{FEED_BASE_URL}?key={api_key}"
+    url = f"{FEED_BASE_URL}?key={RT_api_key}"
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
@@ -127,3 +127,17 @@ async def get_vehicles(
         "count": len(buses),
         "buses": buses
     }
+    
+    
+@app.get
+async def get_route(
+    start_lat: float,
+    start_lon: float,
+    drop_lat: float,
+    drop_lon: float,
+    mode: str
+):
+    ROUTE_api_key= os.getenv("ROUTE_API_KEY")
+    if not ROUTE_api_key:
+        return {"ROUTE_API_KEY is not configured in .env"}
+        
