@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minimal 2km Restricted Map</title>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body,
+      html {
+        height: 100%;
+        width: 100%;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+      }
+      #map {
+        height: 100vh;
+        width: 100vw;
+        background: #f8f9fa;
+      }
+
+      /* Minimal Permission Overlay */
+      .permission-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        transition:
+          opacity 0.3s ease,
+          visibility 0.3s ease;
+      }
+
+      .permission-card {
+        background: #ffffff;
+        padding: 32px 28px;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        text-align: center;
+        max-width: 320px;
+        width: 90%;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      .permission-card h2 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #111;
+        margin-bottom: 8px;
+      }
+      .permission-card p {
+        font-size: 0.875rem;
+        color: #666;
+        margin-bottom: 24px;
+        line-height: 1.5;
+      }
+
+      .btn-locate {
+        background: #111;
+        color: #fff;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.2s ease;
+      }
+      .btn-locate:hover {
+        background: #333;
+      }
+
+      /* Custom Blue Dot Location Marker */
+      .user-dot {
+        width: 12px;
+        height: 12px;
+        background-color: #007aff;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- Location Permission Modal -->
+    <div id="overlay" class="permission-overlay">
+      <div class="permission-card">
+        <h2>Location Access</h2>
+        <p>
+          Enable location services to view the map restricted strictly to a 2 km
+          radius around you.
+        </p>
+        <button id="locateBtn" class="btn-locate">Allow & View Map</button>
+      </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      // Initialize map with maxBoundsViscosity set to 1.0 (creates a rigid hard boundary wall)
+      const map = L.map("map", {
+        zoomControl: false,
+        maxBoundsViscosity: 1.0,
+      }).setView([0, 0], 2);
+
+      // Minimal CartoDB Positron Light Tiles
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          maxZoom: 18,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        },
+      ).addTo(map);
+
+      // Subtle bottom-right zoom control
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+
+      const locateBtn = document.getElementById("locateBtn");
+      const overlay = document.getElementById("overlay");
+
+      locateBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          alert("Geolocation is not supported by your browser.");
+          return;
+        }
+
+        locateBtn.innerText = "Locating...";
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const userLatLng = [lat, lng];
+
+            // 1. Center map on user location
+            map.setView(userLatLng, 15);
+
+            // 2. Add minimal user blue dot marker
+            const userIcon = L.divIcon({
+              className: "user-dot",
+              iconSize: [12, 12],
+              iconAnchor: [6, 6],
+            });
+            L.marker(userLatLng, { icon: userIcon }).addTo(map);
+
+            // 3. Draw 2 km (2000 meters) boundary circle
+            const radiusCircle = L.circle(userLatLng, {
+              color: "#111111",
+              fillColor: "#111111",
+              fillOpacity: 0.03,
+              weight: 1.5,
+              dashArray: "5, 5",
+              radius: 2000,
+            }).addTo(map);
+
+            // 4. ABSOLUTE HARD BOUNDARIES:
+            // Lock panning strictly within the 2km circle's bounding box
+            map.setMaxBounds(radiusCircle.getBounds());
+
+            // Lock zoom out so user cannot zoom out past the 2km area (zoom level 14)
+            map.setMinZoom(14);
+
+            // Hide permission modal
+            overlay.style.opacity = "0";
+            overlay.style.visibility = "hidden";
+          },
+          (error) => {
+            locateBtn.innerText = "Try Again";
+            alert("Unable to retrieve location: " + error.message);
+          },
+          { enableHighAccuracy: true },
+        );
+      });
+    </script>
+  </body>
+</html>
